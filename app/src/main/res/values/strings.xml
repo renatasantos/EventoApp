@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">EventoApp</string>
+    <string name="app_name">Evento App</string>
 
     <string-array name="array_aulas">
         <item>Video 01 - 26/09</item>

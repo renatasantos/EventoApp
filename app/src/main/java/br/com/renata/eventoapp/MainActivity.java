@@ -1,33 +1,35 @@
 package br.com.renata.eventoapp;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+
+    private ItemVideoAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-       // final String[] arrayAulas = getResources().getStringArray(R.array.array_aulas);
-
-        final List<ItemVideo> itemVideos = new ArrayList<>();
-        itemVideos.add(new ItemVideo("Principais erros", "26/09/2016", "http://"));
-        itemVideos.add(new ItemVideo("Videoaula pratica 1", "28/09/2016", "http://"));
-        itemVideos.add(new ItemVideo("Videoaula pratica 2", "29/09/2016", "http://"));
-        itemVideos.add(new ItemVideo("Duvidas Respondidas", "30/09/2016", "http://"));
 
         ListView lista = (ListView) findViewById(R.id.lista);
 
-        ItemVideoAdapter adapter = new ItemVideoAdapter(this, itemVideos);
+       adapter = new ItemVideoAdapter(this, new ArrayList<ItemVideo>());
 
         lista.setAdapter(adapter);
         lista.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -35,12 +37,66 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(MainActivity.this, DetalheActivity.class);
                 Bundle bundle = new Bundle();
-                ItemVideo aula = itemVideos.get(position);
+                ItemVideo aula = (ItemVideo) parent.getItemAtPosition(position);
                 intent.putExtra("AULA", aula);
                 startActivity(intent);
             }
         });
 
+        new EventoTask().execute();
 
+     }
+
+    class EventoTask extends AsyncTask<Void, Void, List<ItemVideo>>{
+        @Override
+        protected List<ItemVideo> doInBackground(Void... params) {
+
+            HttpURLConnection urlConnection = null;
+            BufferedReader reader = null;
+
+            try {
+                URL url = new URL("http://private-d88f6f-semanadevandroid.apiary-mock.com/listar");
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                InputStream inputStream = urlConnection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String linha;
+                StringBuffer buffer = new StringBuffer();
+                while ((linha = reader.readLine()) != null){
+                    buffer.append(linha);
+                    buffer.append("\n");
+                }
+
+                return JsonUtil.fromJson(buffer.toString());
+
+
+            }catch (Exception e){
+                e.printStackTrace();
+                if(urlConnection != null){
+                    urlConnection.disconnect();
+                }
+
+                if(reader != null){
+                    try{
+                        reader.close();
+                    } catch (IOException e1){
+                        e1.printStackTrace();
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(List<ItemVideo> itemVideo) {
+
+            adapter.clear();
+            adapter.addAll(itemVideo);
+            adapter.notifyDataSetChanged();
+
+        }
     }
 }
